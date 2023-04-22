@@ -254,7 +254,7 @@ app.use('/', express.static('files/authorizationServer'));
 // clear the database on startup
 nosql.clear();
 // inject our pre-baked refresh token
-setTimeout(() => nosql.insert({ refresh_token: 'j2r3oj32r23rmasd98uhjrk2o3i', client_id: 'oauth-client-1', scope: 'foo bar' }), 5000);
+setTimeout(() => nosql.insert({ refresh_token: 'j2r3oj32r23rmasd98uhjrk2o3i', client_id: 'oauth-client-1', scope: 'foo bar' }), 10000);
 
 var server = app.listen(9001, 'localhost', function () {
   var host = server.address().address;
