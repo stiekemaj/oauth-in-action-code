@@ -22,14 +22,32 @@ var resource = {
 	"description": "This data has been protected by OAuth 2.0"
 };
 
+var checkAccessToken = function(access_token, callback) {
+    nosql.one().make(function(filter) {
+        filter.where('access_token', access_token);
+        filter.callback(callback);
+    });
+}
+
 var getAccessToken = function(req, res, next) {
 	/*
 	 * Scan for an access token on the incoming request.
 	 */
-	
+    let auth = req.headers['authorization'];
+	if (auth && auth.toLowerCase().indexOf('bearer ') === 0) {
+        let accessToken = auth.substring(7).trim();
+        checkAccessToken(accessToken, function(err, response) {
+            if (response) {
+                req.access_token = response;
+            }
+
+            next();
+        });
+    }
 };
 
 app.options('/resource', cors());
+app.all('*', getAccessToken);
 
 
 /*
@@ -40,7 +58,11 @@ app.post("/resource", cors(), function(req, res){
 	/*
 	 * Check to see if the access token was found or not
 	 */
-	
+    if (req.access_token) {
+        res.json(resource);
+    } else {
+        res.sendStatus(401);
+    }
 });
 
 var server = app.listen(9002, 'localhost', function () {
