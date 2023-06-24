@@ -7,6 +7,7 @@ var querystring = require('querystring');
 var cons = require('consolidate');
 var randomstring = require("randomstring");
 var base64url = require('base64url');
+const {toBase64} = require("request/lib/helpers");
 
 var app = express();
 
@@ -52,6 +53,31 @@ app.get('/authorize', function(req, res){
 	/*
 	 * Implement the client credentials flow here
 	 */
+
+	// call authorization server token endpoint
+
+	var form_data = qs.stringify({
+		grant_type: 'client_credentials',
+		scope: client.scope
+	});
+
+	var headers = {
+		'Content-Type': 'application/x-www-form-urlencoded',
+		'Authorization': 'Basic ' + encodeClientCredentials(client.client_id, client.client_secret)
+	}
+	var tokenResponse = request('POST', authServer.tokenEndpoint, {
+		body: form_data,
+		headers: headers
+	});
+
+	if (tokenResponse.statusCode >= 200 && tokenResponse.statusCode < 300) {
+		var body = JSON.parse(tokenResponse.getBody());
+		res.render('index', {access_token: body.access_token, scope: body.scope});
+	} else {
+		res.render('error', 'Unable to fetch access token, server response: ' + tokenResponse.statusCode);
+	}
+
+
 	
 });
 

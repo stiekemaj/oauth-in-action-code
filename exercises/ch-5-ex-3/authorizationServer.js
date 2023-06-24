@@ -30,11 +30,8 @@ var clients = [
 	{
 		"client_id": "oauth-client-1",
 		"client_secret": "oauth-client-secret-1",
-		"redirect_uris": ["http://localhost:9000/callback"]
-
-		/*
-		 * Add a set of allowed scopes for this client
-		 */
+		"redirect_uris": ["http://localhost:9000/callback"],
+		"scope": "foo bar baz"
 
 	}
 ];
@@ -42,6 +39,15 @@ var clients = [
 var codes = {};
 
 var requests = {};
+
+function getEnabledScopesFromBody(body) {
+	return __.chain(body)
+		.keys()
+		.filter(key => key.startsWith('scope_'))
+		.filter(key => body[key] === 'on')
+		.map(key => key.slice(6))
+		.value();
+}
 
 var getClient = function(clientId) {
 	return __.find(clients, function(client) { return client.client_id == clientId; });
@@ -64,11 +70,13 @@ app.get("/authorize", function(req, res){
 		res.render('error', {error: 'Invalid redirect URI'});
 		return;
 	} else {
-		
-		/*
-		 * Validate that the set of scopes the client is requesting 
-		 * aligns with the set of scopes the client is registered for.
-		 */
+		var requestedScopes = req.query.scope ? req.query.scope.split(' ' ) : [];
+		var allowedScopes = client.scope.split(' ' );
+
+		if (requestedScopes.length !== __.intersection(allowedScopes, requestedScopes).length) {
+			res.render('error', {error: 'invalid_scope'});
+			return;
+		}
 		
 		var reqid = randomstring.generate(8);
 		
@@ -77,7 +85,7 @@ app.get("/authorize", function(req, res){
 		/*
 		 * Send the requested scopes to the approval page for rendering
 		 */
-		res.render('approve', {client: client, reqid: reqid });
+		res.render('approve', {client: client, reqid: reqid, scope: requestedScopes });
 		return;
 	}
 
@@ -102,7 +110,13 @@ app.post('/approve', function(req, res) {
 			/*
 			 * Make sure the approved scopes from the form are allowed for this client
 			 */
-
+			var client = getClient(query.client_id);
+			var allowedScopes = client.scope.split(' ' );
+			var approvedScopes = getEnabledScopesFromBody(req.body);
+			if (approvedScopes.length !== __.intersection(allowedScopes, approvedScopes).length) {
+				res.render('error', {error: 'invalid_scope'});
+				return;
+			}
 
 			var code = randomstring.generate(8);
 			
@@ -112,7 +126,7 @@ app.post('/approve', function(req, res) {
 			 * Save the approved scopes as part of this object
 			 */
 			
-			codes[code] = { request: query };
+			codes[code] = { request: query, scope: approvedScopes };
 		
 			var urlParsed = buildUrl(query.redirect_uri, {
 				code: code,
@@ -199,7 +213,7 @@ app.post("/token", function(req, res){
 				 * Return scopes as part of the token response
 				 */
 				
-				var token_response = { access_token: access_token, token_type: 'Bearer',  refresh_token: refresh_token };
+				var token_response = { access_token: access_token, token_type: 'Bearer',  refresh_token: refresh_token, scope: code.scope};
 
 				res.status(200).json(token_response);
 				console.log('Issued tokens for code %s', req.body.code);
