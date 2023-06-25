@@ -23,4 +23,8 @@
         <allow-intent href="itms:*" />
         <allow-intent href="itms-apps:*" />
     </platform>
+    <plugin name="@globules-io/cordova-plugin-ios-xhr" />
+    <preference name="InterceptRemoteRequests" value="all" />
+    <preference name="scheme" value="app" />
+    <preference name="hostname" value="localhost" />
 </widget>
