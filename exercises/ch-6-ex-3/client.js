@@ -59,6 +59,35 @@ app.post('/username_password', function(req, res) {
 	/*
 	 * Implement the resource owner grant type here
 	 */
+	let form_data = qs.stringify({
+		username: req.body.username,
+		password: req.body.password,
+		scope: client.scope,
+		grant_type: 'password'
+	});
+
+	let headers = {
+		'Content-Type': 'application/x-www-form-urlencoded',
+		'Authorization': 'Basic ' + encodeClientCredentials(client.client_id, client.client_secret)
+	};
+
+	var tokenResponse = request('POST', authServer.tokenEndpoint, {
+		body: form_data,
+		headers: headers
+	});
+
+	if (tokenResponse.statusCode >= 200 && tokenResponse.statusCode < 300) {
+		var body = JSON.parse(tokenResponse.body);
+		res.render('index', {
+			access_token: body.access_token,
+			refresh_token: body.refresh_token,
+			scope: body.scope
+		});
+	} else {
+		res.render('error', {
+			error: 'Unable to fetch access token. Server response: ' + tokenResponse.statusCode
+		});
+	}
 
 });
 
